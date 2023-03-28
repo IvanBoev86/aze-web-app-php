@@ -1,0 +1,19 @@
+apiVersion : apps/v1
+kind: Deployment
+metadata:
+  name: "kubclusterhw5-9d57"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: "kubclusterhw5-9d57"
+  template:
+    metadata:
+      labels:
+        app: "kubclusterhw5-9d57"
+    spec:
+      containers:
+        - name: "kubclusterhw5-9d57"
+          image: "containerhw5.azurecr.io/kubclusterhw5"
+          ports:
+          - containerPort: 80
