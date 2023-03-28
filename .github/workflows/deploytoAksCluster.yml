@@ -1,0 +1,50 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    
+    - uses: azure/docker-login@v1
+      with:
+        login-server: containerhw5.azurecr.io
+        username: ${{ secrets.acr_containerhw5_username }}
+        password: ${{ secrets.acr_containerhw5_password }}
+    
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/" -f  "Dockerfile" -t containerhw5.azurecr.io/kubclusterhw5:${{ github.sha }} --label dockerfile-path=Dockerfile
+        docker push containerhw5.azurecr.io/kubclusterhw5:${{ github.sha }}
+    
+    - uses: azure/k8s-set-context@v1
+      with:
+         kubeconfig: ${{ secrets.aks_kubclusterhw5_kubeConfig }}
+      id: login
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep kubclusterhw58652 | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace kubclusterhw58652`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: kubclusterhw58652
+        container-registry-url: containerhw5.azurecr.io
+        container-registry-username: ${{ secrets.acr_containerhw5_username }}
+        container-registry-password: ${{ secrets.acr_containerhw5_password }}
+        secret-name: kubclusterhwdockerauth
+       
+    - uses: azure/k8s-deploy@v1.2
+      with:
+        namespace: kubclusterhw58652
+        manifests: |
+          manifests/deployment.yml
+          manifests/service.yml
+        images: |
+          containerhw5.azurecr.io/kubclusterhw5:${{ github.sha }}
+        imagepullsecrets: |
+          kubclusterhwdockerauth
